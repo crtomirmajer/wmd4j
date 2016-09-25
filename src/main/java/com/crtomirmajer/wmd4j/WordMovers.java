@@ -20,7 +20,6 @@ public class WordMovers {
     private WordVectors wordVectors;
     private Set<String> stopwords;
     private double      stopwordWeight;
-    private double      maxDistance;
     
     private EarthMovers earthMovers;
     
@@ -28,8 +27,6 @@ public class WordMovers {
         this.wordVectors = builder.wordVectors;
         this.stopwords = builder.stopwords;
         this.stopwordWeight = builder.stopwordWeight;
-        this.maxDistance = builder.maxDistance;
-        
         this.earthMovers = new EarthMovers();
     }
     
@@ -46,12 +43,6 @@ public class WordMovers {
         if(tokensA.length < 1 || tokensB.length < 1)
             throw new IllegalArgumentException();
         
-        if(tokensA.length > tokensB.length) {
-            String[] t = tokensA;
-            tokensA = tokensB;
-            tokensB = t;
-        }
-        
         Map<String, FrequencyVector> mapA = bagOfVectors(tokensA);
         Map<String, FrequencyVector> mapB = bagOfVectors(tokensB);
         
@@ -65,34 +56,26 @@ public class WordMovers {
                                    .flatMap(Collection::stream)
                                    .distinct()
                                    .collect(Collectors.toList());
-        
         double matrix[][] = new double[vocab.size()][vocab.size()];
         
-        int i = 0;
-        int j = 0;
-        for(String tokenA : vocab) {
-            for(String tokenB : vocab) {
+        for(int i = 0 ; i < matrix.length ; i++) {
+            String tokenA = vocab.get(i);
+            for(int j = 0 ; j < matrix.length ; j++) {
+                String tokenB = vocab.get(j);
                 if(mapA.containsKey(tokenA) && mapB.containsKey(tokenB)) {
-                    
                     double distance = mapA.get(tokenA).getVector().distance2(mapB.get(tokenB).getVector());
                     //if tokenA and tokenB are stopwords, calculate distance according to stopword weight
                     if(stopwords != null && tokenA.length() != 1 && tokenB.length() != 1)
                         distance *= stopwords.contains(tokenA) && stopwords.contains(tokenB) ? 1 : stopwordWeight;
-                    
                     matrix[i][j] = distance;
+                    matrix[j][i] = distance;
                 }
-                else {
-                    matrix[i][j] = maxDistance;
-                }
-                j++;
             }
-            j = 0;
-            i++;
         }
         
         double[] freqA = frequencies(vocab, mapA);
         double[] freqB = frequencies(vocab, mapB);
-
+        
         return earthMovers.distance(freqA, freqB, matrix, 0);
     }
     
@@ -131,7 +114,6 @@ public class WordMovers {
         private Set<String> stopwords;
         
         private double stopwordWeight = DEFAULT_STOPWORD_WEIGHT;
-        private double maxDistance    = DEFAULT_MAX_DISTANCE;
         
         private Builder() {}
         
@@ -151,11 +133,6 @@ public class WordMovers {
         
         public Builder stopwordWeight(double stopwordWeight) {
             this.stopwordWeight = stopwordWeight;
-            return this;
-        }
-        
-        public Builder maxDistance(double maxDistance) {
-            this.maxDistance = maxDistance;
             return this;
         }
         
